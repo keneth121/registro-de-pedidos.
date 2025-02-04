@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ver Ventas</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Ventas Registradas</h1>
+        <div id="ventas"></div>
+
+        <p><a href="index.html"><i class="fas fa-arrow-left"></i> Registrar nueva venta</a></p>
+    </div>
+
+    <script type="module">
+        import { db, ref, onValue } from "./firebase-config.js";
+    
+        const ventasDiv = document.getElementById("ventas");
+    
+        onValue(ref(db, "ventas"), (snapshot) => {
+            ventasDiv.innerHTML = ""; // Limpiar antes de actualizar
+            snapshot.forEach((childSnapshot) => {
+                const venta = childSnapshot.val();
+                const p = document.createElement("p");
+                // Incluir el nombre del cliente en el texto
+                p.textContent = `👤 Cliente: ${venta.nombre}, 🛒 Producto: ${venta.producto}, 📦 Cantidad: ${venta.cantidad}, 💰 Precio: ${venta.precio}, Total: ${venta.total}`;
+                ventasDiv.appendChild(p);
+            });
+        });
+    </script>    
+</body>
+</html>

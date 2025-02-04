@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Pedidos</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-hamburger"></i> Nuevo Pedido</h1>
+        <form id="ventaForm">
+            <div class="form-group">
+                <label for="nombre">Nombre del Cliente:</label>
+                <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required>
+            </div>
+
+            <div class="form-group">
+                <label for="producto">Producto:</label>
+                <input type="text" id="producto" placeholder="Ej: Hamburguesa Especial" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="cantidad">Cantidad:</label>
+                <input type="number" id="cantidad" min="1" value="1" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="precio">Precio Unitario:</label>
+                <input type="number" id="precio" min="0" step="0.01" placeholder="Ej: 5.99" required>
+            </div>
+
+            <button type="submit" class="btn-submit">
+                <i class="fas fa-save"></i> Registrar Pedido
+            </button>
+        </form>
+
+        <div class="enlace-ventas">
+            <a href="ventas.html" class="btn-ver">
+                <i class="fas fa-list-alt"></i> Ver Todos los Pedidos
+            </a>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { db, ref, push } from "./firebase-config.js";
+    
+        document.getElementById("ventaForm").addEventListener("submit", (e) => {
+            e.preventDefault();
+    
+            const nombre = document.getElementById("nombre").value; // Capturamos el nombre del cliente
+            const producto = document.getElementById("producto").value;
+            const cantidad = parseInt(document.getElementById("cantidad").value);
+            const precio = parseFloat(document.getElementById("precio").value);
+            const total = cantidad * precio; // Cálculo del total
+    
+            if (nombre && producto && cantidad > 0 && precio >= 0) {
+                push(ref(db, "ventas"), {
+                    nombre,       // Guardamos el nombre del cliente
+                    producto,
+                    cantidad,
+                    precio,
+                    total,
+                    estado: "pendiente" // Estado inicial del pedido
+                }).then(() => {
+                    alert("✅ Pedido registrado con éxito!");
+                    document.getElementById("ventaForm").reset();
+                }).catch(error => {
+                    console.error("❌ Error al guardar:", error);
+                });
+            } else {
+                alert("⚠️ Todos los campos deben ser válidos");
+            }
+        });
+    </script>
+</body>
+</html>
