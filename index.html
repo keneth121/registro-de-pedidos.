@@ -1,78 +1,155 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Registrar Pedidos</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Registrar Pedidos</title>
+  <link rel="stylesheet" href="styles.css" />
+  <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+  <style>
+    /* Opcional: estilos para el contenedor de extras */
+    .extra-group {
+      margin: 1rem 0;
+      padding: 0.5rem;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1><i class="fas fa-hamburger"></i> Nuevo Pedido</h1>
-        <form id="ventaForm">
-            <div class="form-group">
-                <label for="nombre">Nombre del Cliente:</label>
-                <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required>
-            </div>
+  <div class="container">
+    <h1><i class="fas fa-hamburger"></i> Nuevo Pedido</h1>
+    <form id="ventaForm">
+      <div class="form-group">
+        <label for="nombre">Nombre del Cliente:</label>
+        <input type="text" id="nombre" placeholder="Ej: Juan Pérez" required />
+      </div>
 
-            <div class="form-group">
-                <label for="producto">Producto:</label>
-                <input type="text" id="producto" placeholder="Ej: Hamburguesa Especial" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="cantidad">Cantidad:</label>
-                <input type="number" id="cantidad" min="1" value="1" required>
-            </div>
-            
-            <div class="form-group">
-                <label for="precio">Precio Unitario:</label>
-                <input type="number" id="precio" min="0" step="0.01" placeholder="Ej: 5.99" required>
-            </div>
+      <div class="form-group">
+        <label for="producto">Producto:</label>
+        <input type="text" id="producto" placeholder="Ej: Hamburguesa Especial" required />
+      </div>
+      
+      <div class="form-group">
+        <label for="cantidad">Cantidad:</label>
+        <input type="number" id="cantidad" min="1" value="1" required />
+      </div>
+      
+      <div class="form-group">
+        <label for="precio">Precio Unitario:</label>
+        <input type="number" id="precio" min="0" step="0.01" placeholder="Ej: 5.99" required />
+      </div>
 
-            <button type="submit" class="btn-submit">
-                <i class="fas fa-save"></i> Registrar Pedido
-            </button>
-        </form>
+      <!-- Botón para agregar extras -->
+      <button type="button" id="btnExtra" class="btn-submit" style="background: #3498db; margin-bottom:1rem;">
+        <i class="fas fa-plus"></i> Agregar Extra (opcional)
+      </button>
+      <!-- Contenedor donde se agregarán los grupos de extras -->
+      <div id="extrasContainer"></div>
 
-        <div class="enlace-ventas">
-            <a href="ventas.html" class="btn-ver">
-                <i class="fas fa-list-alt"></i> Ver Todos los Pedidos
-            </a>
-        </div>
+      <button type="submit" class="btn-submit">
+        <i class="fas fa-save"></i> Registrar Pedido
+      </button>
+    </form>
+
+    <div class="enlace-ventas">
+      <a href="ventas.html" class="btn-ver">
+        <i class="fas fa-list-alt"></i> Ver Todos los Pedidos
+      </a>
     </div>
-    
-    <script type="module">
-        import { db, ref, push } from "./firebase-config.js";
-    
-        document.getElementById("ventaForm").addEventListener("submit", (e) => {
-            e.preventDefault();
-    
-            const nombre = document.getElementById("nombre").value; // Capturamos el nombre del cliente
-            const producto = document.getElementById("producto").value;
-            const cantidad = parseInt(document.getElementById("cantidad").value);
-            const precio = parseFloat(document.getElementById("precio").value);
-            const total = cantidad * precio; // Cálculo del total
-    
-            if (nombre && producto && cantidad > 0 && precio >= 0) {
-                push(ref(db, "ventas"), {
-                    nombre,       // Guardamos el nombre del cliente
-                    producto,
-                    cantidad,
-                    precio,
-                    total,
-                    estado: "pendiente" // Estado inicial del pedido
-                }).then(() => {
-                    alert("✅ Pedido registrado con éxito!");
-                    document.getElementById("ventaForm").reset();
-                }).catch(error => {
-                    console.error("❌ Error al guardar:", error);
-                });
-            } else {
-                alert("⚠️ Todos los campos deben ser válidos");
-            }
-        });
-    </script>
+  </div>
+  
+  <script type="module">
+    import { db, ref, push } from "./firebase-config.js";
+
+    // Manejamos la creación dinámica de campos extras
+    let extrasCount = 0;
+    const maxExtras = 10;
+    const extrasContainer = document.getElementById("extrasContainer");
+    const btnExtra = document.getElementById("btnExtra");
+
+    btnExtra.addEventListener("click", () => {
+      if (extrasCount < maxExtras) {
+        extrasCount++;
+        // Creamos un contenedor para el extra
+        const extraDiv = document.createElement("div");
+        extraDiv.classList.add("extra-group");
+        extraDiv.setAttribute("id", `extraGroup${extrasCount}`);
+        extraDiv.innerHTML = `
+          <div class="form-group">
+            <label for="extraNombre${extrasCount}">Nombre del Extra ${extrasCount}:</label>
+            <input type="text" id="extraNombre${extrasCount}" placeholder="Ej: Gaseosa">
+          </div>
+          <div class="form-group">
+            <label for="extraPrecio${extrasCount}">Precio del Extra ${extrasCount}:</label>
+            <input type="number" id="extraPrecio${extrasCount}" min="0" step="0.01" placeholder="Ej: 1.50">
+          </div>
+        `;
+        extrasContainer.appendChild(extraDiv);
+      } else {
+        alert("Solo puedes agregar hasta 10 extras.");
+      }
+    });
+
+    document.getElementById("ventaForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      // Datos principales del pedido
+      const nombre = document.getElementById("nombre").value;
+      const producto = document.getElementById("producto").value;
+      const cantidad = parseInt(document.getElementById("cantidad").value);
+      const precio = parseFloat(document.getElementById("precio").value);
+      const totalPrincipal = cantidad * precio;
+      
+      // Recopilamos los extras (si se agregaron)
+      const extras = [];
+      let totalExtra = 0;
+      for (let i = 1; i <= extrasCount; i++) {
+        const extraNombre = document.getElementById(`extraNombre${i}`).value;
+        const extraPrecioVal = document.getElementById(`extraPrecio${i}`).value;
+        if (extraNombre && extraPrecioVal && parseFloat(extraPrecioVal) > 0) {
+          const extraPrecio = parseFloat(extraPrecioVal);
+          extras.push({
+            nombre: extraNombre,
+            precio: extraPrecio
+          });
+          totalExtra += extraPrecio;
+        }
+      }
+
+      // Calcular el total final sumando extras si existen
+      const total = totalPrincipal + totalExtra;
+
+      if (nombre && producto && cantidad > 0 && precio >= 0) {
+        // Crear objeto a guardar, incluyendo extras solo si hay alguno
+        const pedido = {
+          nombre,
+          producto,
+          cantidad,
+          precio,
+          total,
+          estado: "pendiente"
+        };
+
+        if (extras.length > 0) {
+          pedido.extras = extras;
+        }
+
+        push(ref(db, "ventas"), pedido)
+          .then(() => {
+            alert("✅ Pedido registrado con éxito!");
+            document.getElementById("ventaForm").reset();
+            // Reiniciamos los extras y el contador
+            extrasContainer.innerHTML = "";
+            extrasCount = 0;
+          })
+          .catch(error => {
+            console.error("❌ Error al guardar:", error);
+          });
+      } else {
+        alert("⚠️ Todos los campos deben ser válidos");
+      }
+    });
+  </script>
 </body>
 </html>
