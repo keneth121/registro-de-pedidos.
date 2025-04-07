@@ -5,14 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Registrar Pedidos</title>
   <link rel="stylesheet" href="styles.css" />
+  <!-- Font Awesome -->
   <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
   <style>
-    /* Opcional: estilos para el contenedor de extras */
+    /* Estilo para el contenedor de extras */
     .extra-group {
       margin: 1rem 0;
       padding: 0.5rem;
       border: 1px solid #ddd;
       border-radius: 5px;
+      background: #f9f9f9;
+      transition: transform 0.3s ease;
+    }
+
+    .extra-group:hover {
+      transform: scale(1.02);
     }
   </style>
 </head>
@@ -29,21 +36,28 @@
         <label for="producto">Producto:</label>
         <input type="text" id="producto" placeholder="Ej: Hamburguesa Especial" required />
       </div>
-      
+
       <div class="form-group">
         <label for="cantidad">Cantidad:</label>
         <input type="number" id="cantidad" min="1" value="1" required />
       </div>
-      
+
       <div class="form-group">
-        <label for="precio">Precio Unitario:</label>
-        <input type="number" id="precio" min="0" step="0.01" placeholder="Ej: 5.99" required />
+        <label for="precio">Precio Unitario (COP):</label>
+        <input
+          type="text"
+          id="precio"
+          placeholder="Ej: 5.000"
+          oninput="this.value = formatCurrency(this.value)"
+          required
+        />
       </div>
 
       <!-- Botón para agregar extras -->
-      <button type="button" id="btnExtra" class="btn-submit" style="background: #3498db; margin-bottom:1rem;">
+      <button type="button" id="btnExtra" class="btn-submit" style="background: #00b4d8; margin-bottom: 1rem;">
         <i class="fas fa-plus"></i> Agregar Extra (opcional)
       </button>
+
       <!-- Contenedor donde se agregarán los grupos de extras -->
       <div id="extrasContainer"></div>
 
@@ -58,9 +72,19 @@
       </a>
     </div>
   </div>
-  
+
   <script type="module">
     import { db, ref, push } from "./firebase-config.js";
+
+    // Función para formatear números con coma como separador de miles
+    const formatCurrency = (value) => {
+      return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
+
+    // Función para eliminar la coma antes de guardar el valor en Firebase
+    const unformatCurrency = (value) => {
+      return parseFloat(value.replace(/,/g, ""));
+    };
 
     // Manejamos la creación dinámica de campos extras
     let extrasCount = 0;
@@ -81,8 +105,8 @@
             <input type="text" id="extraNombre${extrasCount}" placeholder="Ej: Gaseosa">
           </div>
           <div class="form-group">
-            <label for="extraPrecio${extrasCount}">Precio del Extra ${extrasCount}:</label>
-            <input type="number" id="extraPrecio${extrasCount}" min="0" step="0.01" placeholder="Ej: 1.50">
+            <label for="extraPrecio${extrasCount}">Precio del Extra ${extrasCount} (COP):</label>
+            <input type="text" id="extraPrecio${extrasCount}" placeholder="Ej: 1.500" oninput="this.value = formatCurrency(this.value)">
           </div>
         `;
         extrasContainer.appendChild(extraDiv);
@@ -98,20 +122,20 @@
       const nombre = document.getElementById("nombre").value;
       const producto = document.getElementById("producto").value;
       const cantidad = parseInt(document.getElementById("cantidad").value);
-      const precio = parseFloat(document.getElementById("precio").value);
+      const precio = unformatCurrency(document.getElementById("precio").value);
       const totalPrincipal = cantidad * precio;
-      
+
       // Recopilamos los extras (si se agregaron)
       const extras = [];
       let totalExtra = 0;
       for (let i = 1; i <= extrasCount; i++) {
-        const extraNombre = document.getElementById(`extraNombre${i}`).value;
-        const extraPrecioVal = document.getElementById(`extraPrecio${i}`).value;
-        if (extraNombre && extraPrecioVal && parseFloat(extraPrecioVal) > 0) {
-          const extraPrecio = parseFloat(extraPrecioVal);
+        const extraNombre = document.getElementById(`extraNombre${i}`)?.value;
+        const extraPrecioVal = document.getElementById(`extraPrecio${i}`)?.value;
+        if (extraNombre && extraPrecioVal && parseFloat(unformatCurrency(extraPrecioVal)) > 0) {
+          const extraPrecio = parseFloat(unformatCurrency(extraPrecioVal));
           extras.push({
             nombre: extraNombre,
-            precio: extraPrecio
+            precio: extraPrecio,
           });
           totalExtra += extraPrecio;
         }
@@ -128,7 +152,7 @@
           cantidad,
           precio,
           total,
-          estado: "pendiente"
+          estado: "pendiente",
         };
 
         if (extras.length > 0) {
@@ -143,7 +167,7 @@
             extrasContainer.innerHTML = "";
             extrasCount = 0;
           })
-          .catch(error => {
+          .catch((error) => {
             console.error("❌ Error al guardar:", error);
           });
       } else {
