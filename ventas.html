@@ -56,6 +56,34 @@
         <i class="fas fa-arrow-left"></i> Registrar nueva venta
       </a>
     </p>
+
+    <!-- Modal de Edición -->
+    <div id="editModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); justify-content: center; align-items: center;">
+      <div style="background: white; padding: 2rem; border-radius: 10px; width: 80%; max-width: 500px;">
+        <h2>Editar Pedido</h2>
+        <form id="editForm">
+          <div class="form-group">
+            <label for="editNombre">Nombre del Cliente:</label>
+            <input type="text" id="editNombre" required />
+          </div>
+          <div class="form-group">
+            <label for="editProducto">Producto:</label>
+            <input type="text" id="editProducto" required />
+          </div>
+          <div class="form-group">
+            <label for="editCantidad">Cantidad:</label>
+            <input type="number" id="editCantidad" min="1" required />
+          </div>
+          <div class="form-group">
+            <label for="editPrecio">Precio Unitario (COP):</label>
+            <input type="text" id="editPrecio" oninput="this.value = formatCurrency(this.value)" required />
+          </div>
+          <div id="editExtrasContainer"></div>
+          <button type="submit" class="btn-submit"><i class="fas fa-save"></i> Guardar Cambios</button>
+          <button type="button" id="closeEditModal" style="margin-top: 1rem;">Cancelar</button>
+        </form>
+      </div>
+    </div>
   </div>
 
   <script type="module">
@@ -65,11 +93,20 @@
     const filterButtons = document.querySelectorAll(".btn-filtro");
     const searchInput = document.getElementById("searchInput");
     const btnDailyFactura = document.getElementById("btnDailyFactura");
+    const editModal = document.getElementById("editModal");
+    const editForm = document.getElementById("editForm");
+    const closeEditModal = document.getElementById("closeEditModal");
     let ordersData = [];
+    let currentKey = null;
 
     // Función para formatear números con coma como separador de miles
     const formatCurrency = (value) => {
       return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
+
+    // Función para eliminar la coma antes de guardar el valor en Firebase
+    const unformatCurrency = (value) => {
+      return parseFloat(value.replace(/,/g, ""));
     };
 
     // Función para renderizar los pedidos
@@ -155,12 +192,38 @@
           .catch((err) => console.error(err));
       }
       if (e.target.classList.contains("btn-editar")) {
-        // Aquí va el código para abrir el modal y cargar datos para editar
+        // Abrir el modal de edición
         const order = ordersData.find((o) => o.key === key);
         if (order) {
-          console.log("Pedido a editar:", order); // Depuración
-          // Rellenar el formulario de edición...
-          // (El código de edición se mantiene igual que en tus implementaciones previas)
+          currentKey = key;
+          document.getElementById("editNombre").value = order.nombre;
+          document.getElementById("editProducto").value = order.producto;
+          document.getElementById("editCantidad").value = order.cantidad;
+          document.getElementById("editPrecio").value = formatCurrency(order.precio);
+
+          // Limpiar y cargar extras
+          const editExtrasContainer = document.getElementById("editExtrasContainer");
+          editExtrasContainer.innerHTML = "";
+          if (order.extras && order.extras.length > 0) {
+            order.extras.forEach((extra, idx) => {
+              const extraDiv = document.createElement("div");
+              extraDiv.classList.add("extra-group");
+              extraDiv.innerHTML = `
+                <div class="form-group">
+                  <label>Nombre del Extra:</label>
+                  <input type="text" value="${extra.nombre}" />
+                </div>
+                <div class="form-group">
+                  <label>Precio del Extra (COP):</label>
+                  <input type="text" value="${formatCurrency(extra.precio)}" oninput="this.value = formatCurrency(this.value)" />
+                </div>
+              `;
+              editExtrasContainer.appendChild(extraDiv);
+            });
+          }
+
+          // Mostrar el modal
+          editModal.style.display = "flex";
         }
       }
       if (e.target.classList.contains("btn-factura")) {
@@ -256,6 +319,51 @@
 
     // Búsqueda en tiempo real
     searchInput.addEventListener("input", renderOrders);
+
+    // Lógica del formulario de edición
+    editForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+
+      // Recopilar datos del formulario
+      const nombre = document.getElementById("editNombre").value;
+      const producto = document.getElementById("editProducto").value;
+      const cantidad = parseInt(document.getElementById("editCantidad").value);
+      const precio = unformatCurrency(document.getElementById("editPrecio").value);
+
+      // Recopilar extras
+      const extras = [];
+      const extraInputs = document.querySelectorAll("#editExtrasContainer .extra-group");
+      extraInputs.forEach((group) => {
+        const extraNombre = group.querySelector("input[type='text']").value;
+        const extraPrecio = unformatCurrency(group.querySelector("input[type='text']:nth-child(2)").value);
+        if (extraNombre && extraPrecio > 0) {
+          extras.push({ nombre: extraNombre, precio: extraPrecio });
+        }
+      });
+
+      // Calcular el total
+      const total = cantidad * precio + extras.reduce((acc, ex) => acc + ex.precio, 0);
+
+      // Actualizar el pedido en Firebase
+      update(ref(db, "ventas/" + currentKey), {
+        nombre,
+        producto,
+        cantidad,
+        precio,
+        total,
+        extras: extras.length > 0 ? extras : null,
+      })
+        .then(() => {
+          alert("✅ Pedido actualizado correctamente");
+          editModal.style.display = "none"; // Cerrar el modal
+        })
+        .catch((err) => console.error(err));
+    });
+
+    // Cerrar el modal de edición
+    closeEditModal.addEventListener("click", () => {
+      editModal.style.display = "none";
+    });
   </script>
 </body>
 </html>
