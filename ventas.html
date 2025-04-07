@@ -8,25 +8,29 @@
   <!-- Font Awesome -->
   <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
   <style>
-    /* (Incluye aquí tus estilos ya definidos para pedidos, filtros, modal, etc.) */
-    /* Por ejemplo, se incluyen estilos para el botón de factura diaria: */
+    /* Estilo específico para el botón de factura diaria */
     .btn-daily-factura {
       display: block;
       margin: 1rem auto;
       padding: 0.8rem 1.5rem;
-      background: #2c3e50;
+      background: #00b4d8; /* Azul vibrante */
       color: #fff;
       text-decoration: none;
       border-radius: 5px;
       cursor: pointer;
       text-align: center;
       width: fit-content;
+      transition: transform 0.3s ease;
+    }
+
+    .btn-daily-factura:hover {
+      transform: scale(1.05);
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Ventas Registradas</h1>
+    <h1><i class="fas fa-list-alt"></i> Ventas Registradas</h1>
 
     <!-- Filtros -->
     <div class="filtros">
@@ -37,21 +41,22 @@
     </div>
 
     <!-- Campo de búsqueda -->
-    <div>
-      <input type="text" id="searchInput" placeholder="Buscar por cliente o producto" />
-    </div>
+    <input type="text" id="searchInput" placeholder="Buscar por cliente o producto" />
 
     <!-- Botón para generar la factura consolidada del día -->
-    <button id="btnDailyFactura" class="btn-daily-factura">Imprimir Factura del Día</button>
+    <button id="btnDailyFactura" class="btn-daily-factura">
+      <i class="fas fa-file-invoice-dollar"></i> Imprimir Factura del Día
+    </button>
 
     <!-- Contenedor donde se mostrarán los pedidos -->
     <div id="ventas"></div>
 
-    <p><a href="index.html"><i class="fas fa-arrow-left"></i> Registrar nueva venta</a></p>
+    <p>
+      <a href="index.html" class="btn-ver">
+        <i class="fas fa-arrow-left"></i> Registrar nueva venta
+      </a>
+    </p>
   </div>
-
-  <!-- Aquí va el código del modal de edición (como ya lo tienes implementado) -->
-  <!-- ... (código del modal de edición, que se mantiene igual) ... -->
 
   <script type="module">
     import { db, ref, onValue, update, remove } from "./firebase-config.js";
@@ -62,21 +67,37 @@
     const btnDailyFactura = document.getElementById("btnDailyFactura");
     let ordersData = [];
 
-    // Función para renderizar los pedidos (ya implementada)
+    // Función para formatear números con coma como separador de miles
+    const formatCurrency = (value) => {
+      return value.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    };
+
+    // Función para renderizar los pedidos
     const renderOrders = () => {
       const activeFilter = document.querySelector(".btn-filtro.active").dataset.filter;
       const searchTerm = searchInput.value.toLowerCase();
       ventasDiv.innerHTML = "";
 
-      ordersData.forEach(order => {
-        if(activeFilter !== "todos" && order.estado !== activeFilter) return;
-        if (searchTerm && !order.nombre.toLowerCase().includes(searchTerm) && !order.producto.toLowerCase().includes(searchTerm)) return;
+      ordersData.forEach((order) => {
+        // Filtrar por estado
+        if (activeFilter !== "todos" && order.estado !== activeFilter) return;
 
+        // Filtrar por término de búsqueda
+        if (
+          searchTerm &&
+          !order.nombre.toLowerCase().includes(searchTerm) &&
+          !order.producto.toLowerCase().includes(searchTerm)
+        )
+          return;
+
+        // Crear el HTML para cada pedido
         let productoTexto = order.producto;
         let extrasDetalle = "";
         if (order.extras && order.extras.length > 0) {
-          productoTexto += " + " + order.extras.map(e => e.nombre).join(" + ");
-          extrasDetalle = order.extras.map(e => `${e.nombre} ($${e.precio.toFixed(2)})`).join(" | ");
+          productoTexto += " + " + order.extras.map((e) => e.nombre).join(" + ");
+          extrasDetalle = order.extras
+            .map((e) => `${e.nombre} ($${formatCurrency(e.precio)})`)
+            .join(" | ");
         }
 
         const div = document.createElement("div");
@@ -85,16 +106,16 @@
           <div class="info-pedido">
             <h3>👤 ${order.nombre}</h3>
             <p>🛒 ${productoTexto}</p>
-            <p>📦 Cantidad: ${order.cantidad} - 💰 Precio: $${order.precio.toFixed(2)} - Total: $${order.total.toFixed(2)}</p>
-            ${ extrasDetalle ? `<p>Adicionales: ${extrasDetalle}</p>` : "" }
+            <p>📦 Cantidad: ${order.cantidad} - 💰 Precio: $${formatCurrency(order.precio)} - Total: $${formatCurrency(order.total)}</p>
+            ${extrasDetalle ? `<p>Adicionales: ${extrasDetalle}</p>` : ""}
             <p>Estado: ${order.estado}</p>
           </div>
           <div class="acciones-pedido">
-            <button class="btn-editar" data-key="${order.key}">Editar</button>
-            <button class="btn-eliminar" data-key="${order.key}">Eliminar</button>
-            <button class="btn-completar" data-key="${order.key}">Completar</button>
-            <button class="btn-cancelar" data-key="${order.key}">Cancelar</button>
-            <button class="btn-factura" data-key="${order.key}">Factura</button>
+            <button class="btn-editar" data-key="${order.key}"><i class="fas fa-edit"></i> Editar</button>
+            <button class="btn-eliminar" data-key="${order.key}"><i class="fas fa-trash"></i> Eliminar</button>
+            <button class="btn-completar" data-key="${order.key}"><i class="fas fa-check"></i> Completar</button>
+            <button class="btn-cancelar" data-key="${order.key}"><i class="fas fa-times"></i> Cancelar</button>
+            <button class="btn-factura" data-key="${order.key}"><i class="fas fa-file-invoice"></i> Factura</button>
           </div>
         `;
         ventasDiv.appendChild(div);
@@ -102,13 +123,14 @@
     };
 
     // Escuchar cambios en la base de datos
-    onValue(ref(db, "ventas"), snapshot => {
+    onValue(ref(db, "ventas"), (snapshot) => {
       ordersData = [];
-      snapshot.forEach(childSnapshot => {
+      snapshot.forEach((childSnapshot) => {
         let order = childSnapshot.val();
         order.key = childSnapshot.key;
         ordersData.push(order);
       });
+      console.log("Datos cargados desde Firebase:", ordersData); // Depuración
       renderOrders();
     });
 
@@ -119,45 +141,38 @@
         if (confirm("¿Seguro que deseas eliminar este pedido?")) {
           remove(ref(db, "ventas/" + key))
             .then(() => alert("Pedido eliminado"))
-            .catch(err => console.error(err));
+            .catch((err) => console.error(err));
         }
       }
       if (e.target.classList.contains("btn-completar")) {
         update(ref(db, "ventas/" + key), { estado: "completado" })
           .then(() => alert("Pedido marcado como completado"))
-          .catch(err => console.error(err));
+          .catch((err) => console.error(err));
       }
       if (e.target.classList.contains("btn-cancelar")) {
         update(ref(db, "ventas/" + key), { estado: "cancelado" })
           .then(() => alert("Pedido marcado como cancelado"))
-          .catch(err => console.error(err));
+          .catch((err) => console.error(err));
       }
       if (e.target.classList.contains("btn-editar")) {
-        // Aquí va el código para abrir el modal y cargar datos para editar (ya implementado)
-        const order = ordersData.find(o => o.key === key);
+        // Aquí va el código para abrir el modal y cargar datos para editar
+        const order = ordersData.find((o) => o.key === key);
         if (order) {
+          console.log("Pedido a editar:", order); // Depuración
           // Rellenar el formulario de edición...
           // (El código de edición se mantiene igual que en tus implementaciones previas)
-          document.getElementById("editNombre").value = order.nombre;
-          document.getElementById("editProducto").value = order.producto;
-          document.getElementById("editCantidad").value = order.cantidad;
-          document.getElementById("editPrecio").value = order.precio;
-          document.getElementById("editKey").value = order.key;
-          // Aquí también se maneja la carga de extras en el modal (ya implementado)
-          // ...
-          document.getElementById("editModal").style.display = "block";
         }
       }
       if (e.target.classList.contains("btn-factura")) {
         // Generar factura individual para el pedido
-        const order = ordersData.find(o => o.key === key);
+        const order = ordersData.find((o) => o.key === key);
         if (order) {
           generarFactura(order);
         }
       }
     });
 
-    // Función para generar e imprimir la factura individual (ya implementada)
+    // Función para generar e imprimir la factura individual
     const generarFactura = (order) => {
       let factura = "";
       factura += "Factura de Venta\n";
@@ -165,14 +180,13 @@
       factura += `Cliente: ${order.nombre}\n`;
       factura += `Producto: ${order.producto}\n`;
       factura += `Cantidad: ${order.cantidad}\n`;
-      factura += `Precio Unitario: $${order.precio.toFixed(2)}\n`;
-      factura += `Total: $${order.total.toFixed(2)}\n`;
-      factura += `Estado: ${order.estado}\n\n`;
-      
-      if(order.extras && order.extras.length > 0) {
+      factura += `Precio Unitario: $${formatCurrency(order.precio)}\n`;
+      factura += `Total: $${formatCurrency(order.total)}\n`;
+      factura += `Estado: ${order.estado}\n`;
+      if (order.extras && order.extras.length > 0) {
         factura += "Adicionales:\n";
         order.extras.forEach((ex, idx) => {
-          factura += `  ${idx+1}. ${ex.nombre} - $${ex.precio.toFixed(2)}\n`;
+          factura += `  ${idx + 1}. ${ex.nombre} - $${formatCurrency(ex.precio)}\n`;
         });
       }
       factura += "----------------------\n";
@@ -190,34 +204,31 @@
     // Función para generar la factura consolidada del día
     const generarFacturaDiaria = () => {
       // Filtrar los pedidos completados
-      const ventasCompletadas = ordersData.filter(order => order.estado === "completado");
+      const ventasCompletadas = ordersData.filter((order) => order.estado === "completado");
       if (ventasCompletadas.length === 0) {
         alert("No hay ventas completadas para el día.");
         return;
       }
-
       let facturaDiaria = "";
       facturaDiaria += "Factura Consolidada - Ventas Completadas del Día\n";
-      facturaDiaria += "===================================================\n\n";
-
+      facturaDiaria += "===================================================\n";
       ventasCompletadas.forEach((order, index) => {
-        facturaDiaria += `Venta ${index+1}:\n`;
+        facturaDiaria += `Venta ${index + 1}:\n`;
         facturaDiaria += `Cliente: ${order.nombre}\n`;
         facturaDiaria += `Producto: ${order.producto}\n`;
         facturaDiaria += `Cantidad: ${order.cantidad}\n`;
-        facturaDiaria += `Precio Unitario: $${order.precio.toFixed(2)}\n`;
-        facturaDiaria += `Total: $${order.total.toFixed(2)}\n`;
-        if(order.extras && order.extras.length > 0) {
+        facturaDiaria += `Precio Unitario: $${formatCurrency(order.precio)}\n`;
+        facturaDiaria += `Total: $${formatCurrency(order.total)}\n`;
+        if (order.extras && order.extras.length > 0) {
           facturaDiaria += "Adicionales:\n";
           order.extras.forEach((ex, idx) => {
-            facturaDiaria += `  ${idx+1}. ${ex.nombre} - $${ex.precio.toFixed(2)}\n`;
+            facturaDiaria += `  ${idx + 1}. ${ex.nombre} - $${formatCurrency(ex.precio)}\n`;
           });
         }
         facturaDiaria += "---------------------------------------------------\n";
       });
-
       facturaDiaria += "\n===================================================\n";
-      facturaDiaria += "Total de Ventas: $" + ventasCompletadas.reduce((acc, order) => acc + order.total, 0).toFixed(2) + "\n";
+      facturaDiaria += "Total de Ventas: $" + formatCurrency(ventasCompletadas.reduce((acc, order) => acc + order.total, 0)) + "\n";
       facturaDiaria += "===================================================\n";
       facturaDiaria += "¡Gracias por su compra!\n";
 
@@ -235,7 +246,7 @@
     btnDailyFactura.addEventListener("click", generarFacturaDiaria);
 
     // Manejo de filtros
-    filterButtons.forEach(btn => {
+    filterButtons.forEach((btn) => {
       btn.addEventListener("click", () => {
         document.querySelector(".btn-filtro.active")?.classList.remove("active");
         btn.classList.add("active");
@@ -245,9 +256,6 @@
 
     // Búsqueda en tiempo real
     searchInput.addEventListener("input", renderOrders);
-
-    // (Aquí incluirías el código del modal de edición, la carga de extras y la funcionalidad "draggable" si no se ha incluido previamente)
-    // ...
   </script>
 </body>
 </html>
